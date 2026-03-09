@@ -1,3 +1,6 @@
-torch
-transformers
 streamlit
+transformers
+torch
+huggingface_hub
+yfinance
+pandas
