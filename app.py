@@ -1,5 +1,7 @@
-import streamlit as st
 import requests
+import yfinance as yf
+import streamlit as st
+from transformers import pipeline
 
 API_KEY = st.secrets["HUGGING_FACE_API"]
 
@@ -64,3 +66,39 @@ def query(payload):
 
 if __name__ == "__main__":
     main()
+
+
+st.title("Stock News Sentiment (FinBERT)")
+
+ticker = st.text_input("Stock Ticker (z.B. AAPL, TSLA, NVDA)", "AAPL").upper()
+
+if st.button("News laden & analysieren"):
+    try:
+        stock = yf.Ticker(ticker)
+        news = stock.news[:8]  # max 8 aktuelle News
+
+        results = []
+        sentiment_pipe = pipeline("sentiment-analysis", model="ProsusAI/finbert")  # oder dein fine-tuned Modell
+
+        for item in news:
+            title = item.get('title', '')
+            link = item.get('link', '')
+            if title:
+                res = sentiment_pipe(title)[0]
+                label = res['label']
+                score = res['score']
+                color = "green" if label == "positive" else "red" if label == "negative" else "grey"
+                results.append({
+                    "Title": title,
+                    "Sentiment": f"<span style='color:{color}'>{label} ({score:.2%})</span>",
+                    "Link": link
+                })
+
+        if results:
+            import pandas as pd
+            df = pd.DataFrame(results)
+            st.markdown(df.to_html(escape=False), unsafe_allow_html=True)
+        else:
+            st.info("Keine News gefunden oder Fehler beim Laden.")
+    except Exception as e:
+        st.error(f"Fehler: {str(e)}")
